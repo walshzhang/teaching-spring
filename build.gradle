@@ -19,9 +19,7 @@ subprojects {
     }
 
     dependencies {
-        testCompile("junit:junit:${junitVersion}") {
-            exclude group: 'org.hamcrest', module: 'hamcrest-core'
-        }
+        testCompile("junit:junit:${junitVersion}")
         testCompile("org.mockito:mockito-all:${mockitoVersion}")
     }
 }

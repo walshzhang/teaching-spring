@@ -12,7 +12,7 @@ public class FileBasedStudentDao implements StudentDao {
     }
 
     @Override
-    public List<Student> findByNames(String name) {
+    public List<Student> findByName(String name) {
         //return directly with empty list.
         return Arrays.asList(new Student[]{});
     }

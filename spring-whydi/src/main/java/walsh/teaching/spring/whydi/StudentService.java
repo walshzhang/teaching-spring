@@ -5,11 +5,11 @@ import java.util.List;
 public class StudentService {
     private StudentDao studentDao;
 
-    public StudentService() {
-        this.studentDao = new FileBasedStudentDao("students.txt");
+    public StudentService(StudentDao dao) {
+        this.studentDao = dao;
     }
 
     public List<Student> findByName(String name) {
-        return studentDao.findByNames(name);
+        return studentDao.findByName(name);
     }
 }
