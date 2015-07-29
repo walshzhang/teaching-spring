@@ -1,0 +1,27 @@
+allprojects {
+    group 'walsh.teaching'
+    version '1.0'
+}
+
+subprojects {
+    apply plugin: 'java'
+
+    sourceCompatibility = 1.8
+
+    ext {
+        junitVersion = '4.12'
+        mockitoVersion = '1.10.19'
+        springVersion = '4.1.7.RELEASE'
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        testCompile("junit:junit:${junitVersion}") {
+            exclude group: 'org.hamcrest', module: 'hamcrest-core'
+        }
+        testCompile("org.mockito:mockito-all:${mockitoVersion}")
+    }
+}
