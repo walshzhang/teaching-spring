@@ -1,0 +1,163 @@
+== Spring依赖注入
+
+=== 为什么需要依赖注入
+
+稍微复杂点的程序都由多个类组成，因此必然存在类之间的依赖关系。
+考虑一个学生管理系统，类 `StudentService` 的方法 `findByName(String name)` 用于查找指定姓名的所有学生。
+可以看出，`StudentService` 类与 `StudentDao` 类之间存在依赖关系，
+或者说 `StudentService` 类依赖于 `StudentDao` 类，
+并且 `StudentService` 类的构造函数使用 `new` 关键字完成对 `studentDao` 对象的实例化。
+在依赖注入模式没有普及之前，这种做法是非常普遍。
+
+[source,java,linenums]
+----
+public interface StudentDao {
+    List<Student> findByName(String name);
+}
+
+public class FileBasedStudentDao implements StudentDao {
+    private String filePath;
+    public FileBasedStudentDao(String file) {
+        this.filePath = file;
+    }
+    @Override
+    public List<Student> findByName(String name) {
+    ....
+    }
+}
+
+public class StudentService {
+    private StudentDao studentDao;
+    public StudentService() {
+        studentDao = new FileBasedStudentDao("students.txt");
+    }
+    public List<Student> findByName(String name) {
+        return studentDao.findByName(name);
+    }
+}
+----
+
+这种做法存在以下问题。
+
+* *紧耦合*： 由于使用 `new` 关键字将 `studentDao` 实例化为 `FileBasedStudentDao` 类型的对象，
+使得 `StudentService` 与 `FileBasedStudentDao` 产生了紧耦合。此时，如果想使用其他 `StudentDao` 的实现类，
+如 `MemoryBasedStudentDao` ，除非修改源代码，否则根本无法实现。这违反了__“对修改关闭，对扩展开放”__的((面向对象的原则))。
+* *可测性低*： 由于紧耦合，很难对 `StudentService` 类进行单元测试。单元测试的对象是单个类，所以要想对其进行单元测试，
+必须将其与 `FileBasedStudentDao` 进行解耦。
+* *违反封装性*： `StudentService` 只是使用 `studentDao` 提供的服务，而不应负责对其进行实例化。
+
+所以，要解决上述问题，必须将 `studentDao` 的实例化操作移到 `StudentService` 之外。
+一种可行的办法是将 `StudentService` 类的构造函数进行修改，
+即通过构造函数的参数直接将外部已经实例化的 `StudentDao` 类型的对象传递进来并将该对象赋予 `studentDao` 变量。如下所示。
+
+[source,java,linenums]
+----
+public StudentService(StudentDao studentDao) {
+    this.studentDao = studentDao;
+}
+----
+
+如此即可解决上述问题。当前版本的 `StudentService` 虽然依赖 `StudentDao` 类，
+但并不与其他具体的实现类产生耦合。我们称这样的类为__“POJO”__类。
+接下来对 `StudentService` 进行单元测试。我们使用Mockito框架构造一个 `StudentDao` 类型的模拟对象，
+并将此对象传递给 `StudentService` 对象。
+
+[source,java,linenums]
+----
+@Test
+public void testFindByName() {
+    StudentDao dao = mock(StudentDao.class);
+    StudentService service = new StudentService(dao);
+    service.findByName("alice");
+    verify(dao, times(1)).findByName("alice");
+}
+----
+
+可以看出，现在我们可以按如下方式使用 `StudentService` 。
+
+[source,java,linenums]
+----
+StudentDao dao = new FileBasedStudentDao("students.txt");
+StudentService service = new StudentService(dao);
+
+StudentService service = new StudentService(new MemoryBasedStudentDao());
+----
+
+那么，当前的实现是否还有问题？答案是肯定的。
+首先，对于调用 `StudentService` 的用户而言，他必须自己负责实例化 `StudentDao` 对象并将该对象组装到 `StudentService` 中。
+在本例中，`StudentService` 类只依赖 `StudentDao` ，这多少还可以接受。试想一下：如果 `StudentService` 类还依赖其他的类，
+那么该用户每次在使用时都要先初始化所有的依赖的对象并将这些对象组装到 `StudentService` 对象中。由此可知，这项工作非常繁琐。
+第二个问题是当前的实现违反了封装原则，`StudentService` 类的用户不应该关心这些相互依赖的类如何进行组装。
+这些属于组件的内部实现细节，不应该暴露给用户。因此，提供服务的组件应该负责完成这些组装工作，然后再提供给用户直接使用。
+
+工厂模式可以解决上述问题。首先我们创建一个名为 `StudentServiceFactory` 的工厂类，
+由其负责“制造”各种用户所需要的 `StudentService` 对象。示例代码如下：
+
+[source,java,linenums]
+----
+public class StudentServiceFactory {
+    public static StudentService getFileBasedStudentService(String file) {
+        return new StudentService(new FileBasedStudentDao(file));
+    }
+    public static StudentService getMemoryBasedStudentService() {
+        return new StudentService(new MemoryBasedStudentDao());
+    }
+    ...
+}
+----
+
+这样，用户可通过如下方式直接获取其所需的 `StudentService` 对象，而不需再进行装配。但是对于单元测试，我们无需使用此工厂类。
+
+[source,java,linenums]
+----
+StudentService service = StudentServiceFactory.getFileBasedStudentService("students.txt");
+StudentService service = StudentServiceFactory.getMemoryBasedStudentService();
+----
+
+那么，现在的实现还有问题吗？
+
+=== 什么是依赖注入
+
+如何向一个5岁的孩子介绍依赖注入的概念？以下回答来自于http://www.stackoverflow.com[stackoverflow]网站。
+
+[, stackoverflow]
+""
+When you go and get things out of the refrigerator for yourself,you can cause problems.
+You might leave the door open, you might get something Mommy or Daddy doesn't want you to have.
+You might even be looking for something we don't even have or which has expired.
+
+What you should be doing is stating a need, "I need something to drink with lunch,
+and then we will make sure you have something when you sit down to eat."
+""
+
+使用依赖注入能使我们的程序：
+
+* *松耦合*
+* *可测试*
+* *封装性好*
+
+=== 基于xml的注入方式
+==== 设值注入
+==== 构造子注入
+=== 基于xml的Autowired机制
+* byName
+* byType
+* constructor
+
+=== 基于xml的事件处理
+=== 基于注解的注入方式
+==== 设值注入
+==== 构造子注入
+=== 基于注解的Autowired机制
+* byName
+* byType
+* constructor
+
+=== 基于注解的事件处理
+=== 基于Java的注入方式
+==== 设值注入
+==== 构造子注入
+
+NOTE: 添加内容
+
+=== spel

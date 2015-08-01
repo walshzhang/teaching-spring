@@ -1,0 +1,5 @@
+== Hibernate概述
+=== Gavin King的故事
+=== ORM模式
+=== 基于xml的配置基础
+=== 基于注解的配置

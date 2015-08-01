@@ -1,0 +1,377 @@
+== 单元测试
+单元测试由程序员进行编写。
+编写单元测试的目的是为了确保刚刚自己写完的类能够按预期工作。
+
+编写单元测试包含以下阶段(AAA模式):::
+* 准备（Arrange）：创建要测试的对象，准备测试环境与输入数据（一般由Test Fixture完成）
+* 执行（Act）：调用被测试对象的方法
+* 断言（Assert）：验证执行结果是否符合预期
+
+一个单元测试只测试一个类。
+在编写时必须将测试的类与其有关的依赖进行隔离，如数据库、配置文件等。
+也就是说在单元测试执行过程中，不能有连接数据库，不要读外部文件或连接网络等操作。
+单元测试必须尽早编写。
+只有单元测试做完后再编写集成测试。
+单元测试的代码同样需要维护或重构。
+所谓重构，就是说在不改变程序功能的前提下，对程序进行优化。
+现在常见的IDE都包含对重构功能的支持。
+
+以下是Michael Feathers给出的检测标准。
+[quote, Michael Feathers, A Set Of Unit Testing Rules (2005)]
+____
+A test is not a unit test if:::
+* It talks to the database
+* It communicates across the network
+* It touches the file system
+* It can’t run at the same time as any of your other unit tests
+* You have to do special things to your environment (such as editing config files) to run it.
+____
+
+=== JUnit
+http://junit.org[JUnit]是一个由Kent Beck创立的面向Java开发人员的测试框架。
+可以使用JUnit框架进行单元测试和集成测试的开发。
+
+==== 测试的基本结构
+考虑如下 `Money` 类:
+[source, java, linenums, indent=4]
+----
+.Money.java
+public class Money {
+    private final float amount;
+    private final String currency;
+
+    public Money(int amount, String currency) {
+        if (amount < 0) {
+            throw new IllegalArgumentException(
+              "amount should be positive, but is " + amount);
+        }
+        this.amount = amount;
+        this.currency = currency;
+    }
+
+    public float getAmount() {
+        return amount;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    @Override
+    public boolean equals(Object anObject) {
+        if (anObject instanceof Money) {
+            Money that = (Money) anObject;
+            return Objects.equals(this.amount, that.amount)
+                    && Objects.equals(this.currency, that.currency);
+        }
+        return false;
+    }
+}
+----
+
+以下 `MoneyTest` 是其对应的单元测试类
+[source, java, linenums]
+----
+.MoneyTest.java
+public class MoneyTest {   // <1>
+
+    @Test  // <2>
+    public void constructorShouldSetAmountAndCurrency() { //program also is documentation
+        Money tenDollar = new Money(10, "USD");
+        assertEquals(10, tenDollar.getAmount());
+        assertEquals("USD", tenDollar.getCurrency()); // <3>
+    }
+
+    @Test
+    public void sameAmountAndCurrencyShouldBeEqual() {
+        Money oneDollar = new Money(1, "USD");
+        Money anotherOneDollar = new Money(1, "USD");
+        assertEquals(oneDollar, anotherOneDollar); // <4>
+    }
+
+    @Test
+    public void differentAmountShouldNotBeEqual() {
+        Money oneDollar = new Money(1, "USD");
+        Money tenDollar = new Money(10, "USD");
+        Money oneRmb = new Money(1, "RMB");
+        Money tenRmb = new Money(10, "RMB");
+
+        assertThat(oneDollar, not(equalTo(tenDollar)));
+        assertThat(oneDollar, not(equalTo(tenRmb)));      // <5>
+        assertNotEquals(oneRmb, tenDollar);
+    }
+
+    @Test
+    public void differentCurrencyShouldNotBeEqual() {
+        Money oneDollar = new Money(1, "USD");
+        Money tenDollar = new Money(10, "USD");
+        Money oneRmb = new Money(1, "RMB");
+        Money tenRmb = new Money(10, "RMB");
+
+        assertThat(oneDollar, not(equalTo(oneRmb)));
+        assertNotEquals(tenDollar, tenRmb);
+    }
+
+    @Test(expected = IllegalArgumentException.class)       // <6>
+    public void amountCannotBeNegative() {
+        Money invalidMoney = new Money(-1, "USD");
+    }
+}
+----
+<1> 单元测试一般以 `*Test` 命名，即待__测试类名+Test__
+<2> 注解 `@Test` 说明该方法将被视为一个测试被执行。
+可以去掉该注解或再添加一个 `@Ignore` 注解，那么该测试将不会执行。
+<3> `assertEquals` 是一条断言。该断言用来判断 `tenDollar` 的货币类型等于 `USD`，
+如果相等，则测试通过。如果不相等，则测试失败，然后JUnit将执行下一条测试。
+在JUnit的 `org.junit.Assert` 类下，定义了很多个断言以方便测试，这些断言名都以 `assert` 开头。
+<4> 该断言用来判断相同金额和货币类型的钱是相等的。
+在执行时，将会调用 `oneDollar.equals(anotherDollar)` ,
+如果返回为 `true`, 那么该测试将会被通过。
+<5> 该断言用来判断 `oneDollar` 和 `tenRmb` 是否不相等。
+如果是，则测试通过，否则测试失败。它等价于 `assertNotEquals(oneDollar, tenRmb)`
+此断言是基于hamcrest框架发明的一种语法，它使得断言更加可读，
+该条断言读为 *“断定( `assertThat` ) `oneDollar` 不( `not` )等于( `equalTo` ) `tenRmb` 。”*
+<6> @Test注解可以加入一个参数 `expected` 用于说明该测试在执行过程中应该抛出 `IllegalArgumentException` 类型的异常。
+如果抛出了，则测试通过，否则失败。
+
+TIP: 此测试还有另外一种等价的实现如下面的代码所示。为什么是等价的？哪种实现好呢？
+
+[source, java, linenums]
+----
+@Test
+public void amountCannotBeNegative() {
+   try {
+       new Money(-1, "USD");
+       fail();
+   } catch(IllegalArgumentException e) {
+       //expected exception, no need to handle it.
+   }
+}
+----
+
+JUnit常用的断言如下表所示。
+[cols = "40,40,20", caption = ""]
+.JUnit支持的主要断言（不包含assertThat）
+|===
+| 断言及用法 | 作用 | 相反的断言
+
+| assertEquals(oneDollar, tenDollar) | 判断两个对象是否相等 | assertNotEquals
+
+| assertTrue(1 > 0)  | 判断是否为真 | assertFalse
+
+| assertSame(object, object) | 判断两个对象是否相同  | assertNotSame
+
+| assertNull(object) | 判断对象是否为null | assertNotNull
+|===
+
+==== Test Fixture
+我们知道，测试代码也是需要重构的。那么 `MoneyTest` 需要重构吗？或者说它能不能改进的更好？
+认真观察该程序，我们发现当前的实现中，
+几乎每个测试都定义了类似于 `oneDollar` , `tenDollar`, `oneRmb`, 这样的变量，
+我们应该可以使用 `Test Fixture` 机制提高将这些变量统一管理。修改后的 `MoneyTest` 类如下：
+[source, java, linenums]
+----
+public class MoneyTest {
+    private Money oneDollar = null;
+    private Money tenDollar = null;
+    private Money oneRmb = null;
+    private Money tenRmb = null;
+
+    @Before  //  <1>
+    public void setUp() {
+        oneDollar = new Money(1, "USD");
+        tenDollar = new Money(10, "USD");
+        oneRmb = new Money(1, "RMB");
+        tenRmb = new Money(10, "RMB");
+    }
+
+    @Test
+    public void constructorShouldSetAmountAndCurrency() {
+        assertEquals(10, tenDollar.getAmount(), 0);
+        assertEquals("USD", tenDollar.getCurrency());
+    }
+
+    @Test
+    public void sameAmountAndCurrencyShouldBeEqual() {
+        Money anotherOneDollar = new Money(1, "USD");
+        assertEquals(oneDollar, anotherOneDollar);
+    }
+
+    @Test
+    public void differentAmountShouldNotBeEqual() {
+        assertThat(oneDollar, not(equalTo(tenDollar)));
+        assertThat(oneDollar, not(equalTo(tenRmb)));
+        assertNotEquals(oneRmb, tenDollar);
+    }
+
+    @Test
+    public void differentCurrencyShouldNotBeEqual() {
+        assertThat(oneDollar, not(equalTo(oneRmb)));
+        assertNotEquals(tenDollar, tenRmb);
+        assertThat(oneDollar, not(equalTo(tenRmb)));
+    }
+
+    @Test
+    public void amountCannotBeNegative() {
+        try {
+            Money invalidMoney = new Money(-1, "USD");
+            fail();
+        } catch (IllegalArgumentException e) {
+            //expected exception. no need handle it.
+        }
+    }
+}
+----
+<1> `@Before` 所注解的方法 `setUp` 称作 `Before Test Fixture`。
+它的作用是将统一为每个测试准备好测试对象，并且保证在每个测试执行之前都先运行 `setUp` 方法。
+同时，我们可以看到，在每个测试方法中，不再需要创建测试对象。
+这是因为现在 `setUp` 方法对所有的测试对象进行统一管理，从而提高了程序的复用性并具有灵活性和简洁性。
+
+NOTE: 在最开始定义四个对象时，我们可以将其直接进行实例化，而不需要在 `setUp` 方法中进行。
+在本例中，可以这样做，因为在所有的测试中，这四个对象的状态并没有发生变化。
+反之，如果在某个测试中有可能修改对象的状态，
+那么就需要使用 `Before Test Fixture` 对其再次初始化，
+从而保证每个测试都具有干净的测试环境。
+JUnit还提供了其他类型的 `Test Fixture`,如下表所示：
+
+[cols = "10,25,30,35", caption = ""]
+.JUnit提供的四种 `Test Fixture`
+|===
+| 注解 | 用法 | 作用 | 用法举例
+
+| @Before | public void setUp() | 在每个测试执行之前准备环境 | 创建测试对象和资源，如打开文件等
+
+| @After  | public void tearDown() | 在每个测试执行之后清理环境 | 销毁对象，释放资源，如关闭文件等
+
+| @BeforeClass | public static void setUpEnv() | 在所有测试执行之前准备环境 | 创建测试对象和资源，如打开文件等
+
+| @AfterClass  | public static void tearDownEnv() | 在所有测试执行之后清理环境 | 销毁对象，释放资源，如关闭文件等
+|===
+
+==== Theories
+当前的 `MoneyTest` 已经足够完善了。
+但是可能还有一点问题，比如 `differentAmountShouldNotBeEqual()` 测试，当前版本中包含了如下三条测试。
+[source, java]
+----
+assertThat(oneDollar, not(equalTo(tenDollar)));
+assertThat(oneDollar, not(equalTo(tenRmb)));
+assertNotEquals(oneRmb, tenDollar);
+----
+
+本例有四个对象，就金额而言，可能的组合为4*2=8种，可见本例还差五种。
+有些时候，应用要求我们穷举所有的组合情况并写成断言，这是一件令人痛苦的事情。
+幸好JUnit提供的Theory机制可以将我们从痛苦中解救出来。
+我们使用Theory机制重写 `MoneyTest` 如下所示。
+[source,java,linenums]
+----
+@RunWith(Theories.class)  // <1>
+public class MoneyTest {
+    @DataPoints({"USD", "MONEY"})   // <2>
+    public static Money[] dollars =
+        new Money[]{new Money(1, "USD"), new Money(10, "USD")};
+
+    @DataPoints({"RMB", "MONEY"})
+    public static Money[] rmbs =
+        new Money[]{new Money(1, "RMB"), new Money(10, "RMB")};
+
+    @Theory   // <3>
+    public void constructorShouldSetAmountAndCurrency(
+                                          @FromDataPoints("USD") Money money) {  // <4>
+        assumeThat(money.getAmount(), is(10f));  // <5>
+        assertEquals(10, money.getAmount(), 0);
+        assertEquals("USD", money.getCurrency());
+    }
+
+    @Theory
+    public void sameAmountAndCurrencyShouldBeEqual(
+                                           @FromDataPoints("USD") Money adollar,
+                                           @FromDataPoints("USD") Money anotherDollar) {
+        assumeThat(adollar.getAmount(), is(anotherDollar.getAmount()));
+        assertEquals(adollar, anotherDollar);
+    }
+
+    @Theory
+    public void differentAmountShouldNotBeEqual(
+                                        @FromDataPoints("MONEY") Money money,
+                                        @FromDataPoints("MONEY") Money anotherMoney) {  // <6>
+        System.out.println("money : " + money + ", another: " + anotherMoney);
+        assumeThat(money.getAmount(), is(not(anotherMoney.getAmount())));
+        assertThat(money, not(equalTo(anotherMoney)));
+    }
+
+    @Theory
+    public void differentCurrencyShouldNotBeEqual(
+                                            @FromDataPoints("USD") Money dollar,
+                                            @FromDataPoints("RMB") Money rmb) {
+        assertThat(dollar, not(equalTo(rmb)));
+    }
+
+    @Test
+    public void amountCannotBeNegative() {
+        try {
+            new Money(-1, "USD");
+            fail();
+        } catch (IllegalArgumentException e) {
+            //expected exception. no need handle it.
+        }
+    }
+}
+----
+<1> `@RunWith(Theories.class)` 说明本测试类使用 `Theories` 作为运行器（Runner）。
+默认情况下，JUnit使用的运行器是 `BlockJUnit4ClassRunner`, 此时可以不使用 `@RunWith` 进行说明。
+<2> `@DataPoints` 用来注解一个数组或者可迭代的容器对象，如 `List` 等。
+这些容器或数组中存放的都是测试中可能用到的对象或数据。 `@DataPoints` 可以有零个或多个名字。
+如本例中 `@DataPoints({"USD", "MONEY"})` 具有USD和MONEY两个名字，
+其注解的数组 `dollars` 包含两个测试对象, 即 `oneDollar` 和 `tenDollar`。
+同理， `@DataPoints({"RMB", "MONEY"})` 具有RMB和MONEY两个名字，
+其注解的数组 `rmbs` 包含两个测试对象，即 `oneRmb` 和 `tenRmb` 。
+这些名字将会被用来限制测试数据的来源。
+在本例中，具有名字USD和RMB的对象分别有两个，而具有MONEY名字的对象则包含全部四个对象，
+因为这两个 `@DataPoints` 有着一个相同的名字MONEY。
+<3> `@Theory` 注解的方法是一个测试，这个测试将会被JUnit识别并使用Theories运行器执行。
+而被 `@Test` 注解的测试，JUnit将使用BlockJUnit4Runner运行器执行。
+<4> `@FromDataPoints("USD")` 用来限制测试对象的来源，
+在此处，JUnit只会选择所有具有名字USD的测试对象并逐个传递给参数 `money` 对象。
+换句话说，此处传递给 `money` 对象的测试对象分别为 `oneDollar` 和 `tenDollar` 对象。
+<5> `assumeThat` 应用的是JUnit中的假设机制，即只有满足该假设的对象才会被执行后面的测试。
+而不满足该假设的对象将不会执行后面的测试。在此处满足该假设的对象只有 `tenDollar` 对象，
+因此后面的两条断言只会被执行一次。
+<6> 此处的测试方法有两个参数，`@FromDataPoints("MONEY")` 说明只有具有名字MONEY的测试对象才会传递给两个参数对象。
+按照之前的说法，具有MONEY名字的测试对象共有四个。也就是说，两个参数共有4*4=16种组合。
+然后后面的 `assumeThat` 假设会再次进行过滤。具有相同金额的参数对象的组合共有4*2=8种，
+类似地，这8种组合会被后面的断言进行判断，也就是说，后面的断言会被执行8次，只要有一个断言失败，则整个测试立即失败。
+为了验证，此处使用 `System.out.println` 语句对这8种组合进行了输出，输出结果如下所示。
+[source, java, linenums]
+----
+money : Money{amount=1.0, currency=USD}, another: Money{amount=10.0, currency=USD}
+money : Money{amount=1.0, currency=USD}, another: Money{amount=10.0, currency=RMB}
+money : Money{amount=10.0, currency=USD}, another: Money{amount=1.0, currency=USD}
+money : Money{amount=10.0, currency=USD}, another: Money{amount=1.0, currency=RMB}
+money : Money{amount=1.0, currency=RMB}, another: Money{amount=10.0, currency=USD}
+money : Money{amount=1.0, currency=RMB}, another: Money{amount=10.0, currency=RMB}
+money : Money{amount=10.0, currency=RMB}, another: Money{amount=1.0, currency=USD}
+money : Money{amount=10.0, currency=RMB}, another: Money{amount=1.0, currency=RMB}
+----
+
+在测试 `differentAmountShouldNotBeEqual` 中，
+其时没有必要使用 `@FromDataPoints("MONEY")` 对两个参数进行注解，
+因为所有的测试对象都会被传递给这两个参数。Theories运行器在执行时，
+如果参数没有 `@FromDataPoints` 注解， Theories运行器会自动把所有与参数类型相同的测试对象传递给参数，但
+前提是这些测试对象必须位于被 `@DataPoints` 注解的容器中。
+因此测试方法 `differentAmountShouldNotBeEqual` 的签名可以改为：
+[source, java]
+----
+@Theory
+public void differentAmountShouldNotBeEqual(Money money, Money anotherMoney) {...}
+----
+
+=== Mockito
+不要MOCK任何东西，只有在需要时再MOCK
+test double
+=== hamcrest
+== 集成测试
+=== Spring test
+== 测试驱动开发（TDD）
+== 行为驱动开发（BDD）
+=== Cucumber框架
+== Gradle构建语言

@@ -1,18 +1,37 @@
-allprojects {
-    group 'walsh.teaching'
-    version '1.0'
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath("org.asciidoctor:asciidoctor-gradle-plugin:1.5.2")
+    }
 }
 
-subprojects {
+configure(rootProject) {
+    apply plugin: 'org.asciidoctor.convert'
+
+    asciidoctor {
+        sourceDir project.file('src/reference')
+        options doctype: 'book', ruby: 'erubis'
+    }
+}
+
+allprojects {
     apply plugin: 'java'
 
-    sourceCompatibility = 1.8
+    group 'walsh.teaching'
+    version '1.0'
 
     ext {
         junitVersion = '4.12'
         mockitoVersion = '1.10.19'
         springVersion = '4.1.7.RELEASE'
     }
+}
+
+subprojects {
+    sourceCompatibility = 1.8
 
     repositories {
         mavenCentral()
@@ -20,6 +39,12 @@ subprojects {
 
     dependencies {
         testCompile("junit:junit:${junitVersion}")
-        testCompile("org.mockito:mockito-all:${mockitoVersion}")
+        testCompile("org.mockito:mockito-core:${mockitoVersion}")
+    }
+}
+
+project(':spring-di-injection-xml') {
+    dependencies {
+        compile("org.springframework:spring-context:${springVersion}")
     }
 }
