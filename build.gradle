@@ -43,8 +43,18 @@ subprojects {
     }
 }
 
-project(':spring-di-injection-xml') {
+configure(subprojects.findAll { it.name.startsWith('spring') }) {
     dependencies {
         compile("org.springframework:spring-context:${springVersion}")
+        testCompile("org.springframework:spring-test:${springVersion}")
+    }
+}
+
+project(':spring-jdbc') {
+    dependencies {
+        testCompile('com.github.springtestdbunit:spring-test-dbunit:1.2.1')
+        compile("org.springframework:spring-jdbc:${springVersion}")
+        runtime('com.h2database:h2:1.4.187')
+        runtime('org.dbunit:dbunit:2.5.1')
     }
 }

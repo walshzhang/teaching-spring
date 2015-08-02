@@ -1,0 +1,4 @@
+<dataset>
+    <BOOKS ID="1" TITLE="book1" PRICE="10"/>
+    <BOOKS ID="2" TITLE="book2" PRICE="20"/>
+</dataset>
