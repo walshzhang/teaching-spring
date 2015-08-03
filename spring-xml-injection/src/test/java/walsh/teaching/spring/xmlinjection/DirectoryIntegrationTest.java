@@ -48,7 +48,7 @@ public class DirectoryIntegrationTest {
     @Test
     public void testListFilesWithNameSorterAndNameLister() {
         prepareDirectoryThenListFiles("nameSortedAndSimpleListeddirectory");
-        String expectedOutput = Joiner.on(System.lineSeparator()).join("file1", "file2");
+        String expectedOutput = Joiner.on(System.lineSeparator()).join("file1", "file2", "");
         assertThat(outContent.toString(), equalTo(expectedOutput));
     }
 
