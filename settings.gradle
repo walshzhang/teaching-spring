@@ -1,6 +1,5 @@
 rootProject.name = 'teaching-spring'
 include 'spring-whydi'
-include 'spring-di-injection-xml'
 include 'spring-jdbc'
 include 'spring-hibernate'
 include 'spring-xml-injection'

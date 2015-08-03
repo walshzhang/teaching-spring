@@ -23,7 +23,8 @@ public class Directory {
         this.lister = lister;
     }
 
-    public void ListFiles() {
-        sorter.sort(files).forEach(lister::list);
+    public void listFiles() {
+        sorter.sort(files);
+        files.forEach(lister::list);
     }
 }
