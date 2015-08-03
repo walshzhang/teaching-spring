@@ -1,5 +1,6 @@
 package walsh.teaching.spring.xmlinjection;
 
+import com.google.common.base.Joiner;
 import org.junit.*;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
@@ -47,15 +48,15 @@ public class DirectoryIntegrationTest {
     @Test
     public void testListFilesWithNameSorterAndNameLister() {
         prepareDirectoryThenListFiles("nameSortedAndSimpleListeddirectory");
-
-        assertThat(outContent.toString(), equalTo("file1\r\nfile2\r\n"));
+        String expectedOutput = Joiner.on(System.lineSeparator()).join("file1", "file2");
+        assertThat(outContent.toString(), equalTo(expectedOutput));
     }
 
     @Test
     public void testListFilesWithNameSorterAndDetailedLister() {
         prepareDirectoryThenListFiles("nameSortedAndDetailedListeddirectory");
-
-        assertThat(outContent.toString(), equalTo("file1\t10.000000\nfile2\t20.000000\n"));
+        String expectedOutput = "file1\t10.000000\nfile2\t20.000000\n";
+        assertThat(outContent.toString(), equalTo(expectedOutput));
     }
 
     private void prepareDirectoryThenListFiles(String bean) {

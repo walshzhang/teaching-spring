@@ -25,6 +25,7 @@ allprojects {
 
     ext {
         junitVersion = '4.12'
+        guavaVersion = '18.0'
         mockitoVersion = '1.10.19'
         springVersion = '4.1.7.RELEASE'
     }
@@ -38,6 +39,7 @@ subprojects {
     }
 
     dependencies {
+        compile("com.google.guava:guava:${guavaVersion}")
         testCompile("junit:junit:${junitVersion}")
         testCompile("org.mockito:mockito-core:${mockitoVersion}")
     }

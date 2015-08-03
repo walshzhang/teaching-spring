@@ -41,5 +41,6 @@
     <orderEntry type="library" exported="" scope="RUNTIME" name="Gradle: commons-codec:commons-codec:1.9" level="project" />
     <orderEntry type="library" exported="" scope="RUNTIME" name="Gradle: org.apache.xmlbeans:xmlbeans:2.6.0" level="project" />
     <orderEntry type="library" exported="" scope="RUNTIME" name="Gradle: stax:stax-api:1.0.1" level="project" />
+    <orderEntry type="library" exported="" name="Gradle: com.google.guava:guava:18.0" level="project" />
   </component>
 </module>
